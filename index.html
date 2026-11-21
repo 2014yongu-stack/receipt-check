@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>영수증 한 장 소비 피드백</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    body { font-family: 'Pretendard', sans-serif; background-color: #F2F4F6; }
+    .receipt-锯 {
+      background: #FFFFFF;
+      position: relative;
+    }
+    .receipt-锯::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -10px;
+      height: 10px;
+      background-image: linear-gradient(135deg, #FFFFFF 5px, transparent 0),
+                        linear-gradient(225deg, #FFFFFF 5px, transparent 0);
+      background-size: 10px 10px;
+      background-repeat: repeat-x;
+    }
+    .barcode {
+      height: 28px;
+      background: repeating-linear-gradient(
+        90deg,
+        #1e293b 0px, #1e293b 2px,
+        transparent 2px, transparent 4px,
+        #1e293b 4px, #1e293b 5px,
+        transparent 5px, transparent 8px,
+        #1e293b 8px, #1e293b 11px,
+        transparent 11px, transparent 13px
+      );
+    }
+  </style>
+</head>
+<body class="min-h-screen flex justify-center py-6 px-4 text-slate-900">
+  <main class="w-full max-w-md space-y-4">
+
+    <!-- 상단 헤더 & 탭 전환 -->
+    <header class="space-y-3">
+      <div class="text-center space-y-1">
+        <span class="inline-block bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">RECEIPT CHECK LAB</span>
+        <h1 class="text-2xl font-extrabold tracking-tight">영수증 한 장 소비 피드백</h1>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1.5 bg-slate-200/80 p-1 rounded-2xl">
+        <button id="tab-scan" class="py-2.5 rounded-xl text-sm font-bold bg-white text-slate-900 shadow-xs transition">
+          📸 오늘 진단
+        </button>
+        <button id="tab-ledger" class="py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition">
+          📒 내 가계부 (<span id="ledger-count">0</span>)
+        </button>
+      </div>
+    </header>
+
+    <!-- ================= TAB 1: 오늘 진단 ================= -->
+    <section id="view-scan" class="space-y-4">
+      <!-- 업로드 카드 -->
+      <div class="bg-white rounded-3xl p-5 shadow-xs border border-slate-100">
+        <label id="dropzone" class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-blue-500 rounded-2xl p-5 cursor-pointer transition bg-slate-50/60">
+          <div id="preview-box" class="hidden w-full mb-2 flex justify-center">
+            <img id="preview-img" class="max-h-48 rounded-xl object-contain" />
+          </div>
+          <div id="upload-placeholder" class="text-center space-y-1.5">
+            <div class="w-11 h-11 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-xl">🧾</div>
+            <p class="text-sm font-semibold text-slate-700">영수증 또는 배달앱 캡처 선택</p>
+            <p class="text-xs text-slate-400">올린 뒤 바로 다음 장도 연속 스캔 가능</p>
+          </div>
+          <input id="file-input" type="file" accept="image/*" class="hidden" />
+        </label>
+
+        <button id="analyze-btn" disabled class="mt-3.5 w-full py-3.5 rounded-2xl font-bold text-white bg-slate-300 transition cursor-not-allowed">
+          이미지를 먼저 올려주세요
+        </button>
+      </div>
+
+      <!-- 로딩 / 경과 시간 표시 -->
+      <div id="loading" class="hidden bg-white rounded-3xl p-7 shadow-xs text-center space-y-2.5">
+        <div class="w-9 h-9 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="font-bold text-slate-800 text-sm">AI 코치가 영수증을 분석 중입니다...</p>
+        <p class="text-xs text-slate-400">경과 시간: <span id="elapsed-sec" class="font-semibold text-slate-600">0</span>초</p>
+      </div>
+
+      <!-- 진짜 영수증 스타일 결과 카드 -->
+      <div id="result-wrapper" class="hidden space-y-3 pb-6">
+        <div id="receipt-capture" class="receipt-锯 rounded-t-3xl p-6 shadow-md border border-slate-100 space-y-4">
+          <div class="flex items-start justify-between border-b border-dashed border-slate-300 pb-3.5">
+            <div>
+              <span id="res-badge" class="inline-block bg-indigo-50 text-indigo-600 text-xs font-bold px-2.5 py-0.5 rounded-md mb-1"></span>
+              <h2 id="res-merchant" class="text-lg font-extrabold text-slate-900"></h2>
+              <p id="res-date" class="text-xs text-slate-400 font-mono"></p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block border-2 border-rose-500 text-rose-600 font-black text-xs px-2 py-0.5 rounded -rotate-6">
+                <span id="res-stamp"></span> · <span id="res-score"></span>점
+              </span>
+            </div>
+          </div>
+
+          <!-- 즉시 수정 가능한 금액 & 카테고리 -->
+          <div class="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 block mb-1">결제 금액 (원)</label>
+              <input id="edit-amount" type="number" class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm font-extrabold text-slate-900" />
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 block mb-1">카테고리</label>
+              <select id="edit-category" class="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-sm font-bold text-slate-800">
+                <option value="식비">식비</option>
+                <option value="배달">배달</option>
+                <option value="카페/간식">카페/간식</option>
+                <option value="교통">교통</option>
+                <option value="쇼핑/생활">쇼핑/생활</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 한 줄 코멘트 -->
+          <div class="bg-slate-900 text-white rounded-2xl p-3.5">
+            <p id="res-headline" class="text-sm font-semibold leading-snug"></p>
+          </div>
+
+          <!-- 상세 피드백 -->
+          <div class="space-y-2 text-xs">
+            <div class="bg-emerald-50/80 rounded-xl p-3">
+              <span class="font-bold text-emerald-700 block mb-0.5">👍 잘한 점</span>
+              <p id="res-good" class="text-slate-700 leading-relaxed"></p>
+            </div>
+            <div class="bg-rose-50/80 rounded-xl p-3">
+              <span class="font-bold text-rose-700 block mb-0.5">⚠️ 아쉬운 점</span>
+              <p id="res-bad" class="text-slate-700 leading-relaxed"></p>
+            </div>
+            <div class="bg-blue-50/80 rounded-xl p-3">
+              <span class="font-bold text-blue-700 block mb-0.5">🎯 다음 소비 미션</span>
+              <p id="res-mission" class="text-slate-700 leading-relaxed"></p>
+            </div>
+          </div>
+
+          <!-- 영수증 하단 바코드 -->
+          <div class="pt-2">
+            <div class="barcode opacity-75"></div>
+            <p class="text-[10px] text-center text-slate-400 mt-1.5 tracking-widest">THANK YOU · SMART SPENDING RECEIPT</p>
+          </div>
+        </div>
+
+        <!-- 액션 버튼들 -->
+        <div class="grid grid-cols-2 gap-2.5 pt-2">
+          <button id="save-ledger-btn" class="py-3 rounded-2xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white transition">
+            ✅ 수정 반영 & 가계부 저장
+          </button>
+          <button id="download-img-btn" class="py-3 rounded-2xl font-bold text-sm bg-slate-800 hover:bg-slate-900 text-white transition">
+            🖼️ 결과 카드로 저장
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: 내 가계부 ================= -->
+    <section id="view-ledger" class="hidden space-y-4 pb-6">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white rounded-3xl p-4 shadow-xs border border-slate-100">
+          <span class="text-xs text-slate-400 block">누적 지출</span>
+          <span id="sum-amount" class="text-xl font-black text-slate-900">0원</span>
+        </div>
+        <div class="bg-white rounded-3xl p-4 shadow-xs border border-slate-100">
+          <span class="text-xs text-slate-400 block">평균 소비 점수</span>
+          <span id="sum-score" class="text-xl font-black text-blue-600">-</span>
+        </div>
+      </div>
+
+      <!-- 카테고리별 비중 -->
+      <div class="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-3">
+        <h3 class="text-sm font-extrabold text-slate-800">카테고리별 지출 비중</h3>
+        <div id="category-bars" class="space-y-2.5 text-xs">
+          <p class="text-slate-400">아직 저장된 내역이 없습니다.</p>
+        </div>
+      </div>
+
+      <!-- 누적 리스트 -->
+      <div class="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-extrabold text-slate-800">저장된 영수증 내역</h3>
+          <button id="clear-all-btn" class="text-xs text-rose-500 font-semibold hover:underline">전체 초기화</button>
+        </div>
+        <div id="ledger-list" class="divide-y divide-slate-100 text-sm">
+          <p class="text-slate-400 text-xs py-4 text-center">영수증을 분석한 뒤 [가계부 저장]을 눌러보세요.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const STORAGE_KEY = "receipt_feedback_ledger_v1";
+
+    const tabScan = document.getElementById("tab-scan");
+    const tabLedger = document.getElementById("tab-ledger");
+    const viewScan = document.getElementById("view-scan");
+    const viewLedger = document.getElementById("view-ledger");
+
+    const fileInput = document.getElementById("file-input");
+    const previewBox = document.getElementById("preview-box");
+    const previewImg = document.getElementById("preview-img");
+    const placeholder = document.getElementById("upload-placeholder");
+    const analyzeBtn = document.getElementById("analyze-btn");
+    const loading = document.getElementById("loading");
+    const elapsedEl = document.getElementById("elapsed-sec");
+    const resultWrapper = document.getElementById("result-wrapper");
+
+    const editAmount = document.getElementById("edit-amount");
+    const editCategory = document.getElementById("edit-category");
+    const saveLedgerBtn = document.getElementById("save-ledger-btn");
+    const downloadImgBtn = document.getElementById("download-img-btn");
+
+    let selectedFile = null;
+    let currentData = null;
+    let savedToLedger = false;
+    let timerInterval = null;
+
+    function getLedger() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setLedger(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      renderLedger();
+    }
+
+    // 탭 전환
+    tabScan.addEventListener("click", () => {
+      viewScan.classList.remove("hidden");
+      viewLedger.classList.add("hidden");
+      tabScan.className = "py-2.5 rounded-xl text-sm font-bold bg-white text-slate-900 shadow-xs transition";
+      tabLedger.className = "py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+    });
+
+    tabLedger.addEventListener("click", () => {
+      viewLedger.classList.remove("hidden");
+      viewScan.classList.add("hidden");
+      tabLedger.className = "py-2.5 rounded-xl text-sm font-bold bg-white text-slate-900 shadow-xs transition";
+      tabScan.className = "py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition";
+      renderLedger();
+    });
+
+    // 파일 선택
+    fileInput.addEventListener("change", (e) => {
+      selectedFile = e.target.files[0];
+      if (!selectedFile) return;
+
+      previewImg.src = URL.createObjectURL(selectedFile);
+      previewBox.classList.remove("hidden");
+      placeholder.classList.add("hidden");
+
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = "내 소비 피드백 받기 ✨";
+      analyzeBtn.className = "mt-3.5 w-full py-3.5 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer";
+    });
+
+    // 분석 요청 (60초 타임아웃 + 경과 초 표시)
+    analyzeBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+
+      resultWrapper.classList.add("hidden");
+      loading.classList.remove("hidden");
+      analyzeBtn.disabled = true;
+
+      let sec = 0;
+      elapsedEl.textContent = "0";
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        sec += 1;
+        elapsedEl.textContent = String(sec);
+      }, 1000);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/analyze", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "분석에 실패했습니다.");
+
+        currentData = data;
+        savedToLedger = false;
+        saveLedgerBtn.textContent = "✅ 수정 반영 & 가계부 저장";
+        saveLedgerBtn.disabled = false;
+
+        document.getElementById("res-badge").textContent = data.badge;
+        document.getElementById("res-merchant").textContent = data.merchant;
+        document.getElementById("res-date").textContent = data.date;
+        document.getElementById("res-stamp").textContent = data.stamp;
+        document.getElementById("res-score").textContent = data.score;
+        editAmount.value = data.amount;
+        editCategory.value = data.category;
+        document.getElementById("res-headline").textContent = `“${data.headline}”`;
+        document.getElementById("res-good").textContent = data.good_point;
+        document.getElementById("res-bad").textContent = data.bad_point;
+        document.getElementById("res-mission").textContent = data.next_mission;
+
+        resultWrapper.classList.remove("hidden");
+      } catch (err) {
+        const msg = err.name === "AbortError" ? "응답 시간이 초과되었습니다. 다시 시도해 주세요." : err.message;
+        alert(msg);
+      } finally {
+        clearTimeout(timeoutId);
+        clearInterval(timerInterval);
+        loading.classList.add("hidden");
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    // 수정 반영 후 가계부 저장
+    saveLedgerBtn.addEventListener("click", () => {
+      if (!currentData || savedToLedger) return;
+      const items = getLedger();
+      items.unshift({
+        id: Date.now(),
+        date: currentData.date,
+        merchant: currentData.merchant,
+        amount: Number(editAmount.value) || 0,
+        category: editCategory.value,
+        score: Number(currentData.score) || 0,
+      });
+      setLedger(items);
+      savedToLedger = true;
+      saveLedgerBtn.textContent = "💾 가계부에 저장됨!";
+      saveLedgerBtn.disabled = true;
+    });
+
+    // 영수증 결과 카드 이미지로 저장
+    downloadImgBtn.addEventListener("click", async () => {
+      const target = document.getElementById("receipt-capture");
+      const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#F2F4F6" });
+      const link = document.createElement("a");
+      link.download = `receipt-feedback-${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    // 가계부 렌더링
+    function renderLedger() {
+      const items = getLedger();
+      document.getElementById("ledger-count").textContent = items.length;
+
+      const totalAmount = items.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+      const avgScore = items.length
+        ? Math.round(items.reduce((acc, cur) => acc + (Number(cur.score) || 0), 0) / items.length)
+        : null;
+
+      document.getElementById("sum-amount").textContent = `${totalAmount.toLocaleString()}원`;
+      document.getElementById("sum-score").textContent = avgScore !== null ? `${avgScore}점` : "-";
+
+      const barsEl = document.getElementById("category-bars");
+      const listEl = document.getElementById("ledger-list");
+
+      if (!items.length) {
+        barsEl.innerHTML = `<p class="text-slate-400">아직 저장된 내역이 없습니다.</p>`;
+        listEl.innerHTML = `<p class="text-slate-400 text-xs py-4 text-center">영수증을 분석한 뒤 [가계부 저장]을 눌러보세요.</p>`;
+        return;
+      }
+
+      const byCat = {};
+      items.forEach((it) => {
+        byCat[it.category] = (byCat[it.category] || 0) + (Number(it.amount) || 0);
+      });
+
+      barsEl.innerHTML = Object.entries(byCat)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, amt]) => {
+          const pct = totalAmount ? Math.round((amt / totalAmount) * 100) : 0;
+          return `
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="font-bold text-slate-700">${cat}</span>
+                <span class="text-slate-500">${amt.toLocaleString()}원 (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-600 rounded-full" style="width:${pct}%"></div>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      listEl.innerHTML = items
+        .map(
+          (it) => `
+          <div class="py-3 flex items-center justify-between gap-2">
+            <div>
+              <div class="font-bold text-slate-800">${it.merchant}</div>
+              <div class="text-xs text-slate-400">${it.date} · ${it.category} · ${it.score}점</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="font-extrabold text-slate-900">${Number(it.amount).toLocaleString()}원</span>
+              <button onclick="deleteItem(${it.id})" class="text-xs text-slate-400 hover:text-rose-500">삭제</button>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    window.deleteItem = (id) => {
+      setLedger(getLedger().filter((it) => it.id !== id));
+    };
+
+    document.getElementById("clear-all-btn").addEventListener("click", () => {
+      if (confirm("저장된 가계부 내역을 모두 지울까요?")) {
+        setLedger([]);
+      }
+    });
+
+    renderLedger();
+  </script>
+</body>
+</html>
