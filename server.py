@@ -19,7 +19,7 @@ api_key = os.getenv("GEMINI_API_KEY", "").strip().strip('"').strip("'")
 client = genai.Client(api_key=api_key)
 
 # 요청한 모델 우선 시도 후, 응답 불가/지연 시 안정적인 flash 모델로 자동 폴백
-CANDIDATE_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+CANDIDATE_MODELS = ["gemini-3.5-flash-lite", "gemini-3.5-flash"]
 
 app = FastAPI()
 
