@@ -28,10 +28,7 @@
             flex-direction: column;
             align-items: center;
         }
-        .app-shell {
-            width: 100%;
-            max-width: 560px;
-        }
+        .app-shell { width: 100%; max-width: 560px; }
         .header {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             color: #fff;
@@ -62,18 +59,9 @@
             font-size: 12px;
             font-weight: 700;
         }
-        .header h1 {
-            margin: 4px 0 6px;
-            font-size: 22px;
-            letter-spacing: -0.4px;
-        }
-        .header p {
-            margin: 0;
-            font-size: 13px;
-            color: #cbd5e1;
-        }
+        .header h1 { margin: 4px 0 6px; font-size: 22px; letter-spacing: -0.4px; }
+        .header p { margin: 0; font-size: 13px; color: #cbd5e1; }
 
-        /* 탭 네비게이션 */
         .tabs {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -119,7 +107,6 @@
             align-items: center;
         }
 
-        /* 업로드 & 스캔 */
         .upload-label {
             display: flex;
             flex-direction: column;
@@ -136,21 +123,54 @@
         .upload-label:hover { background: #eff6ff; border-color: var(--primary); }
         .upload-icon { font-size: 42px; margin-bottom: 8px; }
         .upload-text { font-weight: 700; color: var(--primary); font-size: 15px; }
-        .upload-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .upload-hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
         input[type="file"] { display: none; }
 
         #previewContainer { display: none; text-align: center; }
-        #previewImage {
-            max-width: 100%;
-            max-height: 320px;
-            border-radius: 12px;
+        .preview-badge {
+            display: inline-block;
+            background: #eff6ff;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
             margin-bottom: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .preview-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+        }
+        .preview-order {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(15, 23, 42, 0.75);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
         }
 
         .btn {
             border: none;
-            padding: 13px 18px;
+            padding: 13px 16px;
             border-radius: 12px;
             font-size: 14px;
             font-weight: 700;
@@ -162,6 +182,7 @@
         .btn-primary { background: var(--primary); color: #fff; }
         .btn-primary:hover { background: var(--primary-dark); }
         .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-outline { background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
         .btn-warning { background: #f59e0b; color: #fff; }
         .btn-danger { background: #fee2e2; color: #b91c1c; }
         .btn-sm { padding: 7px 12px; font-size: 12px; width: auto; border-radius: 8px; }
@@ -178,7 +199,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* 분석 결과 카드 */
         #resultArea { display: none; }
         .res-top {
             display: flex;
@@ -207,13 +227,7 @@
         .pill { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
         .feedback-box p { margin: 7px 0; font-size: 13.5px; line-height: 1.5; }
 
-        /* 가계부 요약 & 내역 */
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 14px;
-        }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
         .kpi-box {
             background: #f8fafc;
             border: 1px solid var(--border);
@@ -224,14 +238,7 @@
         .kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
         .kpi-val { font-size: 15px; font-weight: 800; color: var(--text); }
 
-        .bar-wrap {
-            height: 10px;
-            background: #e2e8f0;
-            border-radius: 999px;
-            overflow: hidden;
-            display: flex;
-            margin: 10px 0 12px;
-        }
+        .bar-wrap { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; display: flex; margin: 10px 0 12px; }
         .bar-seg { height: 100%; }
         .c-식비 { background: #f97316; }
         .c-배달 { background: #3b82f6; }
@@ -251,7 +258,6 @@
         .ledger-item:last-child { border-bottom: none; }
         .ledger-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
 
-        /* 소비 MBTI 카드 */
         .mbti-hero {
             background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
             color: #fff;
@@ -259,39 +265,13 @@
             padding: 20px;
             margin-bottom: 14px;
         }
-        .mbti-code {
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            color: #a5b4fc;
-        }
-        .mbti-name {
-            font-size: 18px;
-            font-weight: 800;
-            margin: 6px 0 8px;
-        }
-        .mbti-desc {
-            font-size: 13px;
-            color: #e0e7ff;
-            line-height: 1.5;
-            margin: 0;
-        }
+        .mbti-code { font-size: 28px; font-weight: 900; letter-spacing: 2px; color: #a5b4fc; }
+        .mbti-name { font-size: 18px; font-weight: 800; margin: 6px 0 8px; }
+        .mbti-desc { font-size: 13px; color: #e0e7ff; line-height: 1.5; margin: 0; }
 
-        /* 양심 저금통 */
-        .piggy-box {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 14px;
-            padding: 16px;
-        }
-        .piggy-amount {
-            font-size: 24px;
-            font-weight: 900;
-            color: #b45309;
-            margin: 6px 0;
-        }
+        .piggy-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 16px; }
+        .piggy-amount { font-size: 24px; font-weight: 900; color: #b45309; margin: 6px 0; }
 
-        /* 랭킹보드 */
         .rank-row {
             display: flex;
             justify-content: space-between;
@@ -313,7 +293,6 @@
             margin-bottom: 8px;
         }
 
-        /* 양심 저금통 팝업 모달 */
         .modal-backdrop {
             display: none;
             position: fixed;
@@ -337,17 +316,15 @@
 </head>
 <body>
 <div class="app-shell">
-    <!-- 상단 헤더 -->
     <div class="header">
         <div class="header-top">
             <span class="app-badge">AI 스마트 가계부</span>
             <span class="piggy-pill" id="headerPiggyBadge">🐷 양심 저금통 0원</span>
         </div>
-        <h1>영수증 한 장 자동 가계부</h1>
-        <p>번거로운 수기 입력 없이 영수증만으로 소비습관·MBTI·랭킹까지 자동 정리</p>
+        <h1>영수증 자동 가계부 & 소비 코치</h1>
+        <p>길어서 잘린 배달앱 캡처 여러 장도 한 번에 합쳐서 자동 정리!</p>
     </div>
 
-    <!-- 탭 메뉴 -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('scan', this)">📷 영수증 스캔</button>
         <button class="tab-btn" onclick="switchTab('ledger', this)">📒 자동 가계부</button>
@@ -361,23 +338,27 @@
             <div id="uploadArea">
                 <label for="fileInput" class="upload-label">
                     <span class="upload-icon">🧾</span>
-                    <span class="upload-text">영수증 또는 배달앱 캡처 올리기</span>
-                    <span class="upload-hint">올리는 즉시 금액·카테고리·품목이 가계부에 자동 기록됩니다</span>
+                    <span class="upload-text">영수증 또는 배달앱 캡처 올리기 (여러 장 가능)</span>
+                    <span class="upload-hint">주문 내역이 길어서 2~4장으로 잘렸다면 한꺼번에 선택하세요!<br>하나의 주문으로 자동 합산해 가계부에 기록합니다.</span>
                 </label>
-                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFileSelect(event)">
+                <input type="file" id="appendFileInput" accept="image/*" multiple onchange="handleAppendFiles(event)">
             </div>
 
             <div id="previewContainer">
-                <img id="previewImage" src="#" alt="영수증 미리보기">
-                <div style="display:flex; gap:8px;">
-                    <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeReceipt()">가계부에 자동 기록 & 분석 ✨</button>
-                    <button class="btn btn-secondary" style="width:42%;" onclick="resetScanUI()">다시 선택</button>
+                <div class="preview-badge" id="previewCountBadge">총 1장 선택됨 (하나의 영수증으로 통합 분석)</div>
+                <div class="preview-grid" id="previewGrid"></div>
+
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <button class="btn btn-outline" onclick="document.getElementById('appendFileInput').click()">➕ 잘린 캡처 이어붙이기</button>
+                    <button class="btn btn-secondary" style="width:45%;" onclick="resetScanUI()">전체 지우기</button>
                 </div>
+                <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeReceipt()">가계부에 자동 기록 & 분석 ✨</button>
             </div>
 
             <div id="loadingArea">
                 <div class="spinner"></div>
-                <p style="font-size:13px; color:var(--muted); margin:0;">AI 자산관리사가 영수증을 읽고 가계부를 정리 중입니다...</p>
+                <p id="loadingMsg" style="font-size:13px; color:var(--muted); margin:0;">AI 자산관리사가 영수증을 읽고 가계부를 정리 중입니다...</p>
             </div>
 
             <div id="resultArea"></div>
@@ -469,7 +450,7 @@
 </div>
 
 <script>
-    let currentFile = null;
+    let selectedFiles = [];
     const STORAGE_KEY = 'smart_ledger_history_v2';
     const PIGGY_KEY = 'smart_ledger_piggy_v2';
     const FRIENDS_KEY = 'smart_ledger_friends_v2';
@@ -501,36 +482,70 @@
     }
 
     function handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        currentFile = file;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('previewImage').src = e.target.result;
-            document.getElementById('uploadArea').style.display = 'none';
-            document.getElementById('previewContainer').style.display = 'block';
-            document.getElementById('resultArea').style.display = 'none';
-        };
-        reader.readAsDataURL(file);
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) return;
+        selectedFiles = files;
+        renderPreviewGrid();
+    }
+
+    function handleAppendFiles(event) {
+        const moreFiles = Array.from(event.target.files || []);
+        if (moreFiles.length === 0) return;
+        selectedFiles = [...selectedFiles, ...moreFiles];
+        event.target.value = '';
+        renderPreviewGrid();
+    }
+
+    function renderPreviewGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = '';
+        document.getElementById('previewCountBadge').textContent =
+            selectedFiles.length > 1
+                ? `총 ${selectedFiles.length}장 선택됨 (잘린 캡처를 1건으로 합산 분석)`
+                : `총 1장 선택됨`;
+
+        selectedFiles.forEach((file, idx) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.innerHTML = `
+                    <span class="preview-order">${idx + 1}번 캡처</span>
+                    <img src="${e.target.result}" alt="영수증 ${idx + 1}">
+                `;
+                grid.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('uploadArea').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
     }
 
     function resetScanUI() {
-        currentFile = null;
+        selectedFiles = [];
         document.getElementById('fileInput').value = '';
-        document.getElementById('previewImage').src = '#';
+        document.getElementById('appendFileInput').value = '';
+        document.getElementById('previewGrid').innerHTML = '';
         document.getElementById('previewContainer').style.display = 'none';
         document.getElementById('uploadArea').style.display = 'block';
         document.getElementById('resultArea').style.display = 'none';
     }
 
     async function analyzeReceipt() {
-        if (!currentFile) return;
+        if (selectedFiles.length === 0) return;
+        const count = selectedFiles.length;
         document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('loadingMsg').textContent =
+            count > 1
+                ? `나뉘어 찍힌 캡처 ${count}장을 하나로 합쳐서 가계부에 정리 중입니다...`
+                : `AI 자산관리사가 영수증을 읽고 가계부를 정리 중입니다...`;
         document.getElementById('loadingArea').style.display = 'block';
         document.getElementById('resultArea').style.display = 'none';
 
         const formData = new FormData();
-        formData.append("file", currentFile);
+        selectedFiles.forEach(file => formData.append("files", file));
 
         try {
             const response = await fetch("/analyze", { method: "POST", body: formData });
@@ -545,12 +560,13 @@
             history.push(data);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 
-            // 사진 입력 상태 완전 초기화
-            currentFile = null;
+            // 분석 완료 시 선택된 사진 목록 깔끔하게 비우기
+            selectedFiles = [];
             document.getElementById('fileInput').value = '';
-            document.getElementById('previewImage').src = '#';
+            document.getElementById('appendFileInput').value = '';
+            document.getElementById('previewGrid').innerHTML = '';
 
-            renderScanResult(data);
+            renderScanResult(data, count);
             refreshAllUI();
             checkConsciencePiggyTrigger(data, history);
         } catch (e) {
@@ -561,9 +577,10 @@
         }
     }
 
-    function renderScanResult(data) {
+    function renderScanResult(data, mergedCount) {
         const amountStr = Number(data.amount || 0).toLocaleString('ko-KR');
         const stampClean = String(data.stamp || '합격').replace(/\s/g, '');
+        const mergedTag = mergedCount > 1 ? `<span class="pill">🧩 캡처 ${mergedCount}장 통합</span>` : '';
         const area = document.getElementById('resultArea');
         area.innerHTML = `
             <div class="res-top">
@@ -575,6 +592,7 @@
                 </div>
             </div>
             <div class="pill-row">
+                ${mergedTag}
                 <span class="pill">📂 ${data.category}</span>
                 <span class="pill">🎯 합리성 ${data.score}점</span>
                 <span class="pill">🏷️ ${data.badge}</span>
@@ -633,7 +651,6 @@
         URL.revokeObjectURL(url);
     }
 
-    /* 소비 성향 MBTI 계산 엔진 */
     function computeSpendingMBTI(history) {
         if (history.length === 0) {
             return {
@@ -653,10 +670,10 @@
         const deliveryCafeRatio = total > 0 ? ((catSum["배달"] + catSum["카페/간식"]) / total) * 100 : 0;
         const avgPerReceipt = total / history.length;
 
-        const d1 = deliveryCafeRatio >= 45 ? "D" : "H"; // Delivery/Cafe vs Home/Meal
-        const d2 = avgScore >= 75 ? "S" : "F";          // Saver vs Flexer
-        const d3 = avgPerReceipt >= 25000 ? "B" : "M";  // Big-ticket vs Micro-spend
-        const d4 = history.length >= 5 ? "P" : "J";     // Patterned vs Just-started
+        const d1 = deliveryCafeRatio >= 45 ? "D" : "H";
+        const d2 = avgScore >= 75 ? "S" : "F";
+        const d3 = avgPerReceipt >= 25000 ? "B" : "M";
+        const d4 = history.length >= 5 ? "P" : "J";
         const code = `${d1}${d2}${d3}${d4}`;
 
         if (deliveryCafeRatio >= 50) {
@@ -687,7 +704,6 @@
         };
     }
 
-    /* 양심 저금통 트리거 */
     function getPiggyTotal() {
         return Number(localStorage.getItem(PIGGY_KEY) || 0);
     }
@@ -735,7 +751,6 @@
         document.getElementById('piggyModal').style.display = 'none';
     }
 
-    /* 단톡방 소셜 랭킹 보드 */
     function saveNickname() {
         const val = document.getElementById('nicknameInput').value.trim() || "나(본인)";
         localStorage.setItem(NICK_KEY, val);
@@ -819,18 +834,15 @@
             ? Math.round(history.reduce((s, r) => s + Number(r.score || 0), 0) / count)
             : 0;
 
-        // 헤더 & 저금통
         const piggy = getPiggyTotal();
         document.getElementById('headerPiggyBadge').textContent = `🐷 양심 저금통 ${piggy.toLocaleString('ko-KR')}원`;
         document.getElementById('piggyTotalText').textContent = `누적 저금액: ${piggy.toLocaleString('ko-KR')}원`;
         document.getElementById('streakStatusText').textContent = `현재 연속 주의/과소비: ${getBadStreak(history)}회`;
 
-        // 가계부 KPI
         document.getElementById('kpiCount').textContent = `${count}건`;
         document.getElementById('kpiTotal').textContent = `${total.toLocaleString('ko-KR')}원`;
         document.getElementById('kpiScore').textContent = `${avgScore}점`;
 
-        // 카테고리 비율 막대
         const catTotals = {};
         CATEGORIES.forEach(c => catTotals[c] = 0);
         history.forEach(r => {
@@ -854,7 +866,6 @@
             ? textHtml
             : '<div style="color:var(--muted); font-size:13px;">영수증을 등록하면 카테고리별 지출 비율이 자동으로 계산됩니다.</div>';
 
-        // 가계부 리스트 (최신순)
         const ledgerEl = document.getElementById('ledgerList');
         if (count === 0) {
             ledgerEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">아직 등록된 가계부 내역이 없습니다.</div>';
@@ -873,7 +884,6 @@
             `).join('');
         }
 
-        // 소비 성향 MBTI
         const mbti = computeSpendingMBTI(history);
         document.getElementById('mbtiContent').innerHTML = `
             <div class="mbti-hero">
@@ -883,7 +893,6 @@
             </div>
         `;
 
-        // 단톡방 랭킹 보드
         const me = buildMySharePayload();
         const friends = JSON.parse(localStorage.getItem(FRIENDS_KEY) || "[]");
         const board = [

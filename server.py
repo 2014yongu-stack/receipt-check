@@ -48,7 +48,7 @@ app = FastAPI()
 class ReceiptFeedback(BaseModel):
     date: str = Field(description="결제일 YYYY-MM-DD (없으면 오늘 날짜)")
     merchant: str = Field(description="상호명")
-    items_summary: str = Field(description="가계부에 기록할 핵심 구매 품목 요약 (예: 아메리카노 외 1건)")
+    items_summary: str = Field(description="가계부에 기록할 핵심 구매 품목 요약 (예: 아메리카노 외 3건)")
     amount: int = Field(description="할인 반영 후 최종 결제 금액(원 단위 정수)")
     category: Literal["식비", "배달", "카페/간식", "교통", "쇼핑/생활", "기타"]
     score: int = Field(description="소비 합리성 점수 (0~100)")
@@ -112,19 +112,25 @@ def classify_merchant(merchant: str, *extra_tags: str, default_cat: str = "기�
         return "기타"
 
 
-def build_prompt(target_date: str | None = None, style: str = "실용적이고 재치 있게", **kwargs: Any) -> str:
+def build_prompt(image_count: int = 1, target_date: str | None = None, style: str = "실용적이고 재치 있게", **kwargs: Any) -> str:
     """기본/키워드 매개변수, format(), 날짜·시간 활용"""
     now_dt = datetime.now()
     today_str = target_date if target_date else date.today().isoformat()
     time_str = now_dt.strftime("%H:%M:%S")
     tone = str(kwargs.get("tone", "현실적")).strip()
 
+    multi_note = (
+        f"첨부된 {image_count}장의 이미지는 길어서 나뉘어 캡처된 '하나의 동일한 주문/영수증'입니다. 겹치는 부분은 중복 합산하지 말고 하나의 결제 내역으로 통합해서 분석하세요."
+        if image_count > 1
+        else "첨부된 1장의 영수증 또는 배달앱 결제 캡처 이미지를 분석하세요."
+    )
+
     template = (
-        "당신은 영수증 한 장으로 사용자의 가계부를 자동 정리하고 소비 습관을 코칭하는 AI 자산관리사입니다.\n"
+        "당신은 영수증으로 사용자의 가계부를 자동 정리하고 소비 습관을 코칭하는 AI 자산관리사입니다.\n"
         "현재 시각은 {today} {now_time} 입니다.\n"
-        "첨부된 영수증 또는 배달앱 결제 캡처 이미지를 분석해 JSON으로만 답하세요.\n"
+        "{multi_note}\n"
         "- 배달앱 캡처는 쿠폰/할인 적용 후 '최종 결제 금액'을 기준으로 계산하세요.\n"
-        "- items_summary에는 가계부 내역에 바로 적힐 깔끔한 품목 요약을 넣으세요.\n"
+        "- items_summary에는 전체 주문 내역을 종합한 깔끔한 품목 요약을 넣으세요.\n"
         "- stamp는 반드시 '알뜰', '합격', '주의', '과소비' 중 하나로 답하세요.\n"
         "- 문체는 '{style}'하고 '{tone}'인 톤으로 작성하세요."
     )
@@ -132,6 +138,7 @@ def build_prompt(target_date: str | None = None, style: str = "실용적이고 �
         tone=tone,
         today=today_str,
         now_time=time_str,
+        multi_note=multi_note,
         style=style.lower().strip(),
     )
 
@@ -145,11 +152,11 @@ def countdown_generator(n: int) -> Iterator[int]:
 
 
 def prepare_image(raw_bytes: bytes) -> Image.Image:
-    """고해상도 이미지 최적화"""
+    """긴 배달앱 캡처도 글씨가 선명하게 읽히도록 최적화"""
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode in ("RGBA", "P", "LA"):
         img = img.convert("RGB")
-    img.thumbnail((1024, 1024))
+    img.thumbnail((1600, 1600))
     return img
 
 
@@ -160,16 +167,23 @@ async def home():
 
 
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
+async def analyze(files: list[UploadFile] = File(...)):
     if not api_key:
         raise HTTPException(status_code=500, detail=".env 파일에 GEMINI_API_KEY가 없습니다.")
 
-    raw_bytes = await file.read()
-    if not raw_bytes:
-        raise HTTPException(status_code=400, detail="빈 이미지 파일입니다.")
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail="업로드된 이미지가 없습니다.")
 
-    img = prepare_image(raw_bytes)
-    prompt_text = build_prompt(style="실용적이고 재치 있게", tone="현실적")
+    images: list[Image.Image] = []
+    for f in files:
+        raw_bytes = await f.read()
+        if raw_bytes:
+            images.append(prepare_image(raw_bytes))
+
+    if len(images) == 0:
+        raise HTTPException(status_code=400, detail="유효한 이미지 파일이 없습니다.")
+
+    prompt_text = build_prompt(image_count=len(images), style="실용적이고 재치 있게", tone="현실적")
     last_error = ""
 
     model_iter: Iterator[str] = iter(CANDIDATE_MODELS)
@@ -189,7 +203,7 @@ async def analyze(file: UploadFile = File(...)):
         try:
             response = client.models.generate_content(
                 model=model_name,
-                contents=[img, prompt_text],
+                contents=[*images, prompt_text],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=ReceiptFeedback,
