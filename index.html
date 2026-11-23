@@ -3,287 +3,911 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 영수증 팩트폭행러 - 소비 코치</title>
+    <title>영수증 한 장 AI 스마트 가계부 & 소비습관 코치</title>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .container { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 500px; width: 100%; margin-bottom: 20px; text-align: center; box-sizing: border-box; }
-        h1 { font-size: 24px; color: #2c3e50; margin-bottom: 5px; }
-        p.subtitle { color: #7f8c8d; margin-bottom: 25px; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .app-shell {
+            width: 100%;
+            max-width: 560px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #fff;
+            padding: 24px 22px;
+            border-radius: 22px;
+            margin-bottom: 14px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .app-badge {
+            background: rgba(59, 130, 246, 0.25);
+            color: #93c5fd;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .piggy-pill {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .header h1 {
+            margin: 4px 0 6px;
+            font-size: 22px;
+            letter-spacing: -0.4px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
 
-        #uploadArea { transition: all 0.5s ease; }
-        .upload-label { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px dashed #3498db; border-radius: 15px; padding: 40px; cursor: pointer; transition: background 0.3s; }
-        .upload-label:hover { background: #ecf0f1; }
-        .upload-icon { font-size: 48px; color: #3498db; margin-bottom: 10px; }
-        .upload-text { color: #3498db; font-weight: bold; }
+        /* 탭 네비게이션 */
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            background: #e2e8f0;
+            padding: 5px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+        }
+        .tab-btn {
+            border: none;
+            background: transparent;
+            padding: 10px 4px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 800;
+            margin: 0 0 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 업로드 & 스캔 */
+        .upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #93c5fd;
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 36px 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .upload-label:hover { background: #eff6ff; border-color: var(--primary); }
+        .upload-icon { font-size: 42px; margin-bottom: 8px; }
+        .upload-text { font-weight: 700; color: var(--primary); font-size: 15px; }
+        .upload-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
         input[type="file"] { display: none; }
 
-        #previewContainer { margin-top: 20px; display: none; }
-        #previewImage { max-width: 100%; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn { border: none; padding: 15px 30px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s, transform 0.1s; width: 100%; margin-top: 10px; }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: #3498db; color: #fff; }
-        .btn-primary:hover { background: #2980b9; }
-        .btn-reset { background: #95a5a6; color: #fff; display: none; }
-        .btn-reset:hover { background: #7f8c8d; }
+        #previewContainer { display: none; text-align: center; }
+        #previewImage {
+            max-width: 100%;
+            max-height: 320px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
 
-        #loadingArea { display: none; text-align: center; margin: 30px 0; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        .btn {
+            border: none;
+            padding: 13px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.15s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-warning { background: #f59e0b; color: #fff; }
+        .btn-danger { background: #fee2e2; color: #b91c1c; }
+        .btn-sm { padding: 7px 12px; font-size: 12px; width: auto; border-radius: 8px; }
+
+        #loadingArea { display: none; text-align: center; padding: 28px 0; }
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 12px;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #resultArea { display: none; text-align: left; }
-        .result-card { background: #fff; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #eee; margin-bottom: 20px; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
-        .stamp { font-size: 28px; font-weight: bold; padding: 5px 15px; border-radius: 10px; transform: rotate(-5deg); border: 3px solid; }
-        .stamp.합격 { color: #2ecc71; border-color: #2ecc71; }
-        .stamp.주의 { color: #f1c40f; border-color: #f1c40f; }
-        .stamp.과소비 { color: #e74c3c; border-color: #e74c3c; }
-        .stamp.알뜰 { color: #3498db; border-color: #3498db; }
-        .merchant { font-size: 20px; font-weight: bold; color: #2c3e50; }
-        .amount { font-size: 24px; font-weight: bold; color: #e67e22; margin-top: 5px; }
-        .badge { background: #34495e; color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 10px; }
-        .headline { font-style: italic; color: #7f8c8d; margin: 15px 0; font-size: 16px; line-height: 1.5; }
-        .points { margin-top: 15px; }
-        .points p { margin: 5px 0; font-size: 14px; line-height: 1.4; }
-        .points strong { color: #2c3e50; }
+        /* 분석 결과 카드 */
+        #resultArea { display: none; }
+        .res-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+        }
+        .stamp {
+            font-size: 20px;
+            font-weight: 900;
+            padding: 6px 14px;
+            border-radius: 10px;
+            border: 3px solid;
+            transform: rotate(-4deg);
+        }
+        .stamp.알뜰 { color: #2563eb; border-color: #2563eb; }
+        .stamp.합격 { color: #10b981; border-color: #10b981; }
+        .stamp.주의 { color: #f59e0b; border-color: #f59e0b; }
+        .stamp.과소비 { color: #ef4444; border-color: #ef4444; }
+        .res-merchant { font-size: 18px; font-weight: 800; }
+        .res-items { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .res-amount { font-size: 22px; font-weight: 900; color: var(--primary); margin-top: 4px; }
+        .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .pill { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .feedback-box p { margin: 7px 0; font-size: 13.5px; line-height: 1.5; }
 
-        .stats-card { background: #2c3e50; color: #fff; border-radius: 15px; padding: 25px; text-align: left; margin-top: 10px; }
-        .stats-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #4a6077; padding-bottom: 10px; }
-        .stats-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
-        .stats-total { font-size: 20px; font-weight: bold; margin-top: 15px; color: #f1c40f; line-height: 1.4; }
-        .category-bar-container { height: 6px; background: #4a6077; border-radius: 3px; margin-top: 5px; overflow: hidden; display: flex; }
-        .category-bar { height: 100%; }
-        .cat-식비 { background: #e67e22; }
-        .cat-배달 { background: #3498db; }
-        .cat-카페\/간식 { background: #9b59b6; }
-        .cat-교통 { background: #1abc9c; }
-        .cat-쇼핑\/생활 { background: #34495e; }
-        .cat-기타 { background: #7f8c8d; }
+        /* 가계부 요약 & 내역 */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .kpi-box {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 10px;
+            text-align: center;
+        }
+        .kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+        .kpi-val { font-size: 15px; font-weight: 800; color: var(--text); }
+
+        .bar-wrap {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+            display: flex;
+            margin: 10px 0 12px;
+        }
+        .bar-seg { height: 100%; }
+        .c-식비 { background: #f97316; }
+        .c-배달 { background: #3b82f6; }
+        .c-카페 { background: #a855f7; }
+        .c-교통 { background: #14b8a6; }
+        .c-쇼핑 { background: #ec4899; }
+        .c-기타 { background: #64748b; }
+
+        .ledger-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .ledger-item:last-child { border-bottom: none; }
+        .ledger-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+        /* 소비 MBTI 카드 */
+        .mbti-hero {
+            background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 14px;
+        }
+        .mbti-code {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #a5b4fc;
+        }
+        .mbti-name {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 6px 0 8px;
+        }
+        .mbti-desc {
+            font-size: 13px;
+            color: #e0e7ff;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* 양심 저금통 */
+        .piggy-box {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .piggy-amount {
+            font-size: 24px;
+            font-weight: 900;
+            color: #b45309;
+            margin: 6px 0;
+        }
+
+        /* 랭킹보드 */
+        .rank-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 12px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+        .rank-row.me { border-color: var(--primary); background: #eff6ff; }
+        .rank-badge { font-weight: 900; font-size: 15px; width: 32px; }
+        .input-inline {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        /* 양심 저금통 팝업 모달 */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 999;
+        }
+        .modal-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        }
     </style>
 </head>
 <body>
+<div class="app-shell">
+    <!-- 상단 헤더 -->
+    <div class="header">
+        <div class="header-top">
+            <span class="app-badge">AI 스마트 가계부</span>
+            <span class="piggy-pill" id="headerPiggyBadge">🐷 양심 저금통 0원</span>
+        </div>
+        <h1>영수증 한 장 자동 가계부</h1>
+        <p>번거로운 수기 입력 없이 영수증만으로 소비습관·MBTI·랭킹까지 자동 정리</p>
+    </div>
 
-    <div class="container">
-        <h1>AI 영수증 팩트폭행러</h1>
-        <p class="subtitle">당신의 지갑 사정을 냉정하게 코치해드립니다.</p>
+    <!-- 탭 메뉴 -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('scan', this)">📷 영수증 스캔</button>
+        <button class="tab-btn" onclick="switchTab('ledger', this)">📒 자동 가계부</button>
+        <button class="tab-btn" onclick="switchTab('mbti', this)">🧬 소비 MBTI</button>
+        <button class="tab-btn" onclick="switchTab('social', this)">🏆 단톡방 랭킹</button>
+    </div>
 
-        <div id="uploadArea">
-            <label for="fileInput" class="upload-label">
-                <span class="upload-icon">📷</span>
-                <span class="upload-text">영수증 또는 배달앱 캡처 올리기</span>
-            </label>
-            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+    <!-- 1. 영수증 스캔 탭 -->
+    <div id="tab-scan" class="tab-panel active">
+        <div class="card">
+            <div id="uploadArea">
+                <label for="fileInput" class="upload-label">
+                    <span class="upload-icon">🧾</span>
+                    <span class="upload-text">영수증 또는 배달앱 캡처 올리기</span>
+                    <span class="upload-hint">올리는 즉시 금액·카테고리·품목이 가계부에 자동 기록됩니다</span>
+                </label>
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            </div>
+
+            <div id="previewContainer">
+                <img id="previewImage" src="#" alt="영수증 미리보기">
+                <div style="display:flex; gap:8px;">
+                    <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeReceipt()">가계부에 자동 기록 & 분석 ✨</button>
+                    <button class="btn btn-secondary" style="width:42%;" onclick="resetScanUI()">다시 선택</button>
+                </div>
+            </div>
+
+            <div id="loadingArea">
+                <div class="spinner"></div>
+                <p style="font-size:13px; color:var(--muted); margin:0;">AI 자산관리사가 영수증을 읽고 가계부를 정리 중입니다...</p>
+            </div>
+
+            <div id="resultArea"></div>
+        </div>
+    </div>
+
+    <!-- 2. 자동 가계부 탭 -->
+    <div id="tab-ledger" class="tab-panel">
+        <div class="card">
+            <div class="card-title">
+                <span>📊 누적 가계부 요약</span>
+                <button class="btn btn-secondary btn-sm" onclick="exportCSV()">엑셀(CSV) 저장</button>
+            </div>
+            <div class="kpi-grid">
+                <div class="kpi-box">
+                    <div class="kpi-label">기록 건수</div>
+                    <div class="kpi-val" id="kpiCount">0건</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">총 지출액</div>
+                    <div class="kpi-val" id="kpiTotal">0원</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">평균 소비점수</div>
+                    <div class="kpi-val" id="kpiScore">0점</div>
+                </div>
+            </div>
+            <div id="categoryBarArea"></div>
+            <div id="categoryTextArea" style="font-size:13px; line-height:1.6;"></div>
         </div>
 
-        <div id="previewContainer">
-            <img id="previewImage" src="#" alt="영수증 미리보기">
-            <div style="display: flex; gap: 10px;">
-                <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeReceipt()">내 소비 피드백 받기 ✨</button>
-                <button id="newAnalyzeBtn" class="btn btn-reset" onclick="resetApp()" style="display: block;">새 영수증 분석하기</button>
+        <div class="card">
+            <div class="card-title">
+                <span>🧾 자동 정리된 지출 내역</span>
+                <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">전체 초기화</button>
+            </div>
+            <div id="ledgerList"></div>
+        </div>
+    </div>
+
+    <!-- 3. 소비 MBTI & 양심 저금통 탭 -->
+    <div id="tab-mbti" class="tab-panel">
+        <div class="card">
+            <div class="card-title"><span>🧬 데이터 기반 소비 성향 MBTI</span></div>
+            <div id="mbtiContent"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span>🐷 양심 저금통 (강제 저금 트리거)</span></div>
+            <div class="piggy-box">
+                <div style="font-size:13px; color:#78350f;">합리성 점수 50점 미만 또는 '주의/과소비' 3연속 시 발동!</div>
+                <div class="piggy-amount" id="piggyTotalText">누적 저금액: 0원</div>
+                <div style="font-size:12px; color:#92400e; margin-bottom:12px;" id="streakStatusText">현재 연속 주의/과소비: 0회</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-warning" onclick="depositPiggy(5000)">+ 5,000원 양심 저금 기록</button>
+                    <button class="btn btn-secondary" style="width:45%;" onclick="resetPiggy()">저금 초기화</button>
+                </div>
             </div>
         </div>
+    </div>
 
-        <div id="loadingArea">
-            <div class="spinner"></div>
-            <p id="loadingText">AI 코치가 영수증을 분석 중입니다...<br>잠시만 기다려주세요.</p>
+    <!-- 4. 단톡방 랭킹전 탭 -->
+    <div id="tab-social" class="tab-panel">
+        <div class="card">
+            <div class="card-title"><span>🏆 우리 단톡방 소비 방어전 랭킹</span></div>
+            <input type="text" id="nicknameInput" class="input-inline" placeholder="내 닉네임 입력 (예: 청주대 알뜰왕)" onchange="saveNickname()">
+            <button class="btn btn-primary" style="margin-bottom:14px;" onclick="copyShareLink()">단톡방 공유 링크 복사하기 🔗</button>
+
+            <div style="font-size:12px; color:var(--muted); margin-bottom:6px;">친구가 보낸 공유 링크나 코드를 붙여넣어 랭킹에 추가하세요:</div>
+            <div style="display:flex; gap:6px; margin-bottom:16px;">
+                <input type="text" id="friendCodeInput" class="input-inline" style="margin-bottom:0;" placeholder="공유 링크 또는 코드 붙여넣기">
+                <button class="btn btn-secondary btn-sm" style="white-space:nowrap;" onclick="addFriendFromInput()">친구 추가</button>
+            </div>
+
+            <div id="rankingList"></div>
         </div>
-
-        <div id="resultArea"></div>
     </div>
+</div>
 
-    <div class="container stats-card">
-        <div class="stats-title">📊 나의 소비 통계 (누적)</div>
-        <div class="stats-row"><span>총 분석 건수</span> <strong id="statsCount">0건</strong></div>
-        <div class="stats-row"><span>총 지출 합계</span> <strong id="statsTotalAmount">0원</strong></div>
-        <div class="stats-row"><span>평균 합리성 점수</span> <strong id="statsAvgScore">0점</strong></div>
-        <div id="categoryBreakdown" class="points"></div>
-        <div class="stats-total" id="statsComment"></div>
+<!-- 양심 저금통 경고 팝업 -->
+<div class="modal-backdrop" id="piggyModal">
+    <div class="modal-card">
+        <div style="font-size:44px; margin-bottom:8px;">🚨🐷</div>
+        <h3 style="margin:0 0 8px; color:#b91c1c;">양심 저금통 발동!</h3>
+        <p id="piggyModalReason" style="font-size:14px; color:#334155; line-height:1.5; margin-bottom:16px;"></p>
+        <button class="btn btn-warning" style="margin-bottom:8px;" onclick="confirmPiggyPenalty()">5,000원 비상금 저금 완료로 기록하기</button>
+        <button class="btn btn-secondary" onclick="closePiggyModal()">이번만 눈감고 닫기</button>
     </div>
+</div>
 
-    <script>
-        let currentFile = null;
-        const CATEGORIES = ["식비", "배달", "카페/간식", "교통", "쇼핑/생활", "기타"];
-        const CAT_COLORS = ["cat-식비", "cat-배달", "cat-카페/간식", "cat-교통", "cat-쇼핑/생활", "cat-기타"];
-        const STORAGE_KEY = 'receipt_check_history';
+<script>
+    let currentFile = null;
+    const STORAGE_KEY = 'smart_ledger_history_v2';
+    const PIGGY_KEY = 'smart_ledger_piggy_v2';
+    const FRIENDS_KEY = 'smart_ledger_friends_v2';
+    const NICK_KEY = 'smart_ledger_nick_v2';
 
-        window.onload = function() {
-            updateStatsUI();
+    const CATEGORIES = ["식비", "배달", "카페/간식", "교통", "쇼핑/생활", "기타"];
+    const CAT_CLASS = {
+        "식비": "c-식비",
+        "배달": "c-배달",
+        "카페/간식": "c-카페",
+        "교통": "c-교통",
+        "쇼핑/생활": "c-쇼핑",
+        "기타": "c-기타"
+    };
+
+    window.onload = function() {
+        const savedNick = localStorage.getItem(NICK_KEY) || "나(본인)";
+        document.getElementById('nicknameInput').value = savedNick;
+        importFriendFromURL();
+        refreshAllUI();
+    };
+
+    function switchTab(tabName, btnEl) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
+        btnEl.classList.add('active');
+        refreshAllUI();
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        currentFile = file;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImage').src = e.target.result;
+            document.getElementById('uploadArea').style.display = 'none';
+            document.getElementById('previewContainer').style.display = 'block';
+            document.getElementById('resultArea').style.display = 'none';
         };
+        reader.readAsDataURL(file);
+    }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                currentFile = file;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('previewImage').src = e.target.result;
-                    document.getElementById('uploadArea').style.display = 'none';
-                    document.getElementById('previewContainer').style.display = 'block';
-                    document.getElementById('resultArea').style.display = 'none';
-                    document.getElementById('analyzeBtn').style.display = 'block';
-                };
-                reader.readAsDataURL(file);
+    function resetScanUI() {
+        currentFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('previewImage').src = '#';
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('uploadArea').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
+    }
+
+    async function analyzeReceipt() {
+        if (!currentFile) return;
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('loadingArea').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
+
+        const formData = new FormData();
+        formData.append("file", currentFile);
+
+        try {
+            const response = await fetch("/analyze", { method: "POST", body: formData });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "분석 실패");
             }
-        }
+            const data = await response.json();
+            data.id = Date.now();
 
-        function resetApp() {
+            const history = getHistory();
+            history.push(data);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+            // 사진 입력 상태 완전 초기화
             currentFile = null;
             document.getElementById('fileInput').value = '';
             document.getElementById('previewImage').src = '#';
-            document.getElementById('previewContainer').style.display = 'none';
-            document.getElementById('uploadArea').style.display = 'block';
-            document.getElementById('resultArea').style.display = 'none';
-            document.getElementById('analyzeBtn').style.display = 'block';
+
+            renderScanResult(data);
+            refreshAllUI();
+            checkConsciencePiggyTrigger(data, history);
+        } catch (e) {
+            alert("분석 중 오류: " + e.message);
+            resetScanUI();
+        } finally {
+            document.getElementById('loadingArea').style.display = 'none';
         }
+    }
 
-        async function analyzeReceipt() {
-            if (!currentFile) return;
+    function renderScanResult(data) {
+        const amountStr = Number(data.amount || 0).toLocaleString('ko-KR');
+        const stampClean = String(data.stamp || '합격').replace(/\s/g, '');
+        const area = document.getElementById('resultArea');
+        area.innerHTML = `
+            <div class="res-top">
+                <span class="stamp ${stampClean}">${data.stamp}</span>
+                <div style="text-align:right;">
+                    <div class="res-merchant">${data.merchant}</div>
+                    <div class="res-items">${data.date} · ${data.items_summary || data.category}</div>
+                    <div class="res-amount">${amountStr}원</div>
+                </div>
+            </div>
+            <div class="pill-row">
+                <span class="pill">📂 ${data.category}</span>
+                <span class="pill">🎯 합리성 ${data.score}점</span>
+                <span class="pill">🏷️ ${data.badge}</span>
+            </div>
+            <div class="feedback-box">
+                <p><strong>💡 가계부 코멘트:</strong> ${data.headline}</p>
+                <p><strong>👍 잘한 점:</strong> ${data.good_point}</p>
+                <p><strong>🤔 절약 포인트:</strong> ${data.bad_point}</p>
+                <p><strong>🚀 다음 미션:</strong> ${data.next_mission}</p>
+            </div>
+            <button class="btn btn-primary" style="margin-top:14px;" onclick="resetScanUI()">다음 영수증 계속 등록하기 ➕</button>
+        `;
+        area.style.display = 'block';
+    }
 
-            document.getElementById('analyzeBtn').style.display = 'none';
-            document.getElementById('newAnalyzeBtn').style.display = 'none';
-            document.getElementById('loadingArea').style.display = 'block';
-            document.getElementById('resultArea').style.display = 'none';
+    function getHistory() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    }
 
-            const formData = new FormData();
-            formData.append("file", currentFile);
+    function deleteLedgerItem(id) {
+        const next = getHistory().filter(item => item.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        refreshAllUI();
+    }
 
-            try {
-                const response = await fetch("/analyze", {
-                    method: "POST",
-                    body: formData
-                });
+    function clearAllHistory() {
+        if (!confirm("저장된 가계부 내역을 모두 초기화할까요?")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        refreshAllUI();
+    }
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || "서버 분석 실패");
-                }
+    function exportCSV() {
+        const history = getHistory();
+        if (history.length === 0) {
+            alert("내보낼 가계부 내역이 없습니다.");
+            return;
+        }
+        const header = ["날짜", "상호명", "품목요약", "카테고리", "결제금액", "합리성점수", "판정"];
+        const rows = history.map(r => [
+            r.date,
+            `"${String(r.merchant).replace(/"/g, '""')}"`,
+            `"${String(r.items_summary || '').replace(/"/g, '""')}"`,
+            r.category,
+            r.amount,
+            r.score,
+            r.stamp
+        ].join(","));
+        const csvContent = "\uFEFF" + [header.join(","), ...rows].join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `AI_스마트가계부_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 
-                const data = await response.json();
-                displayResult(data);
-                saveDataToLocalStorage(data);
-                updateStatsUI();
+    /* 소비 성향 MBTI 계산 엔진 */
+    function computeSpendingMBTI(history) {
+        if (history.length === 0) {
+            return {
+                code: "NEW-B",
+                title: "첫 영수증을 기다리는 새싹 가계부",
+                desc: "영수증 1장만 등록해도 당신의 소비 MBTI와 지출 패턴을 자동으로 분석해 드립니다."
+            };
+        }
+        const total = history.reduce((s, r) => s + Number(r.amount || 0), 0);
+        const avgScore = history.reduce((s, r) => s + Number(r.score || 0), 0) / history.length;
+        const catSum = {};
+        CATEGORIES.forEach(c => catSum[c] = 0);
+        history.forEach(r => {
+            catSum[r.category] = (catSum[r.category] || 0) + Number(r.amount || 0);
+        });
 
-                // 분석 완료 시 미리보기 이미지와 파일 입력 상태 정리
-                currentFile = null;
-                document.getElementById('fileInput').value = '';
-                document.getElementById('previewImage').src = '#';
-                document.getElementById('previewContainer').style.display = 'none';
-            } catch (error) {
-                console.error("Error:", error);
-                alert("분석 중 오류가 발생했습니다: " + error.message);
-                resetApp();
-            } finally {
-                document.getElementById('loadingArea').style.display = 'none';
-                document.getElementById('newAnalyzeBtn').style.display = 'block';
+        const deliveryCafeRatio = total > 0 ? ((catSum["배달"] + catSum["카페/간식"]) / total) * 100 : 0;
+        const avgPerReceipt = total / history.length;
+
+        const d1 = deliveryCafeRatio >= 45 ? "D" : "H"; // Delivery/Cafe vs Home/Meal
+        const d2 = avgScore >= 75 ? "S" : "F";          // Saver vs Flexer
+        const d3 = avgPerReceipt >= 25000 ? "B" : "M";  // Big-ticket vs Micro-spend
+        const d4 = history.length >= 5 ? "P" : "J";     // Patterned vs Just-started
+        const code = `${d1}${d2}${d3}${d4}`;
+
+        if (deliveryCafeRatio >= 50) {
+            return {
+                code,
+                title: "🛵 배달의 민족 & 카페인 중독자",
+                desc: `전체 지출의 ${deliveryCafeRatio.toFixed(1)}%가 배달과 카페에 집중되어 있어요! 배달비와 커피 한 잔만 줄여도 한 달 치 비상금이 모입니다.`
+            };
+        }
+        if (avgScore >= 82) {
+            return {
+                code,
+                title: "💎 알뜰살뜰 자린고비 전략가",
+                desc: `평균 합리성 점수 ${avgScore.toFixed(0)}점! 불필요한 새는 돈을 완벽하게 방어하는 상위 1% 알뜰 소비자입니다.`
+            };
+        }
+        if (avgPerReceipt >= 30000) {
+            return {
+                code,
+                title: "🔥 오늘만 사는 화끈한 탕진잼",
+                desc: `건당 평균 결제액이 ${Math.round(avgPerReceipt).toLocaleString('ko-KR')}원으로 큼직한 소비가 잦습니다. 결제 전 10초만 고민해 보세요!`
+            };
+        }
+        return {
+            code,
+            title: "⚖️ 균형 잡힌 현실주의 생활러",
+            desc: `평균 점수 ${avgScore.toFixed(0)}점으로 쓸 땐 쓰고 아낄 땐 아끼는 안정적인 소비 패턴을 유지하고 있습니다.`
+        };
+    }
+
+    /* 양심 저금통 트리거 */
+    function getPiggyTotal() {
+        return Number(localStorage.getItem(PIGGY_KEY) || 0);
+    }
+
+    function depositPiggy(amount) {
+        const next = getPiggyTotal() + amount;
+        localStorage.setItem(PIGGY_KEY, String(next));
+        refreshAllUI();
+    }
+
+    function resetPiggy() {
+        localStorage.setItem(PIGGY_KEY, "0");
+        refreshAllUI();
+    }
+
+    function getBadStreak(history) {
+        let streak = 0;
+        for (let i = history.length - 1; i >= 0; i--) {
+            const st = String(history[i].stamp || "");
+            if (st === "주의" || st === "과소비") streak++;
+            else break;
+        }
+        return streak;
+    }
+
+    function checkConsciencePiggyTrigger(latest, history) {
+        const streak = getBadStreak(history);
+        const lowScore = Number(latest.score || 100) < 50;
+        if (lowScore || streak >= 3) {
+            const reason = lowScore
+                ? `이번 소비 점수가 ${latest.score}점(50점 미만)으로 측정되었습니다! 양심에 찔린다면 5,000원을 비상금 계좌로 이체하고 기록하세요.`
+                : `'주의/과소비' 판정을 연속 ${streak}회 받았습니다! 지갑 브레이크를 위해 5,000원을 양심 저금통에 넣어보세요.`;
+            document.getElementById('piggyModalReason').textContent = reason;
+            document.getElementById('piggyModal').style.display = 'flex';
+        }
+    }
+
+    function confirmPiggyPenalty() {
+        depositPiggy(5000);
+        closePiggyModal();
+        alert("🐷 5,000원이 양심 저금통에 기록되었습니다! 실제 계좌 이체도 잊지 마세요!");
+    }
+
+    function closePiggyModal() {
+        document.getElementById('piggyModal').style.display = 'none';
+    }
+
+    /* 단톡방 소셜 랭킹 보드 */
+    function saveNickname() {
+        const val = document.getElementById('nicknameInput').value.trim() || "나(본인)";
+        localStorage.setItem(NICK_KEY, val);
+        refreshAllUI();
+    }
+
+    function buildMySharePayload() {
+        const history = getHistory();
+        const nick = (localStorage.getItem(NICK_KEY) || "나(본인)").trim();
+        const total = history.reduce((s, r) => s + Number(r.amount || 0), 0);
+        const avgScore = history.length > 0
+            ? Math.round(history.reduce((s, r) => s + Number(r.score || 0), 0) / history.length)
+            : 0;
+        const mbti = computeSpendingMBTI(history).code;
+        return { nick, count: history.length, total, avgScore, mbti };
+    }
+
+    function encodeShareString(obj) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    }
+
+    function decodeShareString(str) {
+        let code = str.trim();
+        if (code.includes("share=")) {
+            code = code.split("share=")[1].split("&")[0];
+        }
+        return JSON.parse(decodeURIComponent(escape(atob(code))));
+    }
+
+    function copyShareLink() {
+        const payload = buildMySharePayload();
+        const encoded = encodeShareString(payload);
+        const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert(`단톡방 공유 링크가 복사되었습니다!\n[${payload.nick} · 평균 ${payload.avgScore}점 · ${payload.mbti}]\n카톡방에 붙여넣어 친구들과 점수를 겨뤄보세요!`);
+        }).catch(() => {
+            prompt("아래 링크를 복사해 단톡방에 공유하세요:", shareUrl);
+        });
+    }
+
+    function importFriendFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const shared = params.get("share");
+        if (!shared) return;
+        try {
+            const friend = decodeShareString(shared);
+            saveFriendRecord(friend);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {
+            console.warn("공유 코드 파싱 실패", e);
+        }
+    }
+
+    function addFriendFromInput() {
+        const raw = document.getElementById('friendCodeInput').value;
+        if (!raw.trim()) return;
+        try {
+            const friend = decodeShareString(raw);
+            saveFriendRecord(friend);
+            document.getElementById('friendCodeInput').value = "";
+            refreshAllUI();
+            alert(`'${friend.nick}'님이 랭킹보드에 추가되었습니다!`);
+        } catch (e) {
+            alert("올바른 공유 링크나 코드가 아닙니다.");
+        }
+    }
+
+    function saveFriendRecord(friend) {
+        if (!friend || !friend.nick) return;
+        const list = JSON.parse(localStorage.getItem(FRIENDS_KEY) || "[]");
+        const filtered = list.filter(f => f.nick !== friend.nick);
+        filtered.push(friend);
+        localStorage.setItem(FRIENDS_KEY, JSON.stringify(filtered));
+    }
+
+    function refreshAllUI() {
+        const history = getHistory();
+        const count = history.length;
+        const total = history.reduce((s, r) => s + Number(r.amount || 0), 0);
+        const avgScore = count > 0
+            ? Math.round(history.reduce((s, r) => s + Number(r.score || 0), 0) / count)
+            : 0;
+
+        // 헤더 & 저금통
+        const piggy = getPiggyTotal();
+        document.getElementById('headerPiggyBadge').textContent = `🐷 양심 저금통 ${piggy.toLocaleString('ko-KR')}원`;
+        document.getElementById('piggyTotalText').textContent = `누적 저금액: ${piggy.toLocaleString('ko-KR')}원`;
+        document.getElementById('streakStatusText').textContent = `현재 연속 주의/과소비: ${getBadStreak(history)}회`;
+
+        // 가계부 KPI
+        document.getElementById('kpiCount').textContent = `${count}건`;
+        document.getElementById('kpiTotal').textContent = `${total.toLocaleString('ko-KR')}원`;
+        document.getElementById('kpiScore').textContent = `${avgScore}점`;
+
+        // 카테고리 비율 막대
+        const catTotals = {};
+        CATEGORIES.forEach(c => catTotals[c] = 0);
+        history.forEach(r => {
+            const c = CATEGORIES.includes(r.category) ? r.category : "기타";
+            catTotals[c] += Number(r.amount || 0);
+        });
+
+        let barHtml = '<div class="bar-wrap">';
+        let textHtml = '';
+        CATEGORIES.forEach(c => {
+            const amt = catTotals[c];
+            if (amt > 0 && total > 0) {
+                const pct = ((amt / total) * 100).toFixed(1);
+                barHtml += `<div class="bar-seg ${CAT_CLASS[c]}" style="width:${pct}%"></div>`;
+                textHtml += `<div>• <strong>${c}</strong>: ${amt.toLocaleString('ko-KR')}원 (${pct}%)</div>`;
             }
-        }
+        });
+        barHtml += '</div>';
+        document.getElementById('categoryBarArea').innerHTML = count > 0 ? barHtml : '';
+        document.getElementById('categoryTextArea').innerHTML = count > 0
+            ? textHtml
+            : '<div style="color:var(--muted); font-size:13px;">영수증을 등록하면 카테고리별 지출 비율이 자동으로 계산됩니다.</div>';
 
-        function displayResult(data) {
-            const resultArea = document.getElementById('resultArea');
-            const amount = Number(data.amount || 0).toLocaleString('ko-KR');
-            const stampClass = String(data.stamp || '').replace(/\s/g, '');
-
-            resultArea.innerHTML = `
-                <div class="result-card">
-                    <div class="result-header">
-                        <span class="stamp ${stampClass}">${data.stamp}</span>
-                        <div style="text-align:right;">
-                            <div class="merchant">${data.merchant}</div>
-                            <div class="amount">${amount} 원</div>
-                        </div>
-                    </div>
+        // 가계부 리스트 (최신순)
+        const ledgerEl = document.getElementById('ledgerList');
+        if (count === 0) {
+            ledgerEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">아직 등록된 가계부 내역이 없습니다.</div>';
+        } else {
+            ledgerEl.innerHTML = [...history].reverse().map(item => `
+                <div class="ledger-item">
                     <div>
-                        <span class="badge">${data.badge}</span>
-                        <p class="headline">${data.headline}</p>
-                        <div class="points">
-                            <p><strong>👍 잘한 점:</strong> ${data.good_point}</p>
-                            <p><strong>🤔 아쉬운 점:</strong> ${data.bad_point}</p>
-                            <p><strong>🎯 다음 미션:</strong> ${data.next_mission}</p>
-                        </div>
+                        <strong>${item.merchant}</strong> <span style="font-size:11px; color:var(--primary);">[${item.category}]</span>
+                        <div class="ledger-meta">${item.date} · ${item.items_summary || '-'} · ${item.score}점(${item.stamp})</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:800;">${Number(item.amount).toLocaleString('ko-KR')}원</div>
+                        <button style="border:none; background:none; color:#94a3b8; font-size:11px; cursor:pointer;" onclick="deleteLedgerItem(${item.id})">삭제</button>
                     </div>
                 </div>
+            `).join('');
+        }
+
+        // 소비 성향 MBTI
+        const mbti = computeSpendingMBTI(history);
+        document.getElementById('mbtiContent').innerHTML = `
+            <div class="mbti-hero">
+                <div class="mbti-code">${mbti.code}</div>
+                <div class="mbti-name">${mbti.title}</div>
+                <p class="mbti-desc">${mbti.desc}</p>
+            </div>
+        `;
+
+        // 단톡방 랭킹 보드
+        const me = buildMySharePayload();
+        const friends = JSON.parse(localStorage.getItem(FRIENDS_KEY) || "[]");
+        const board = [
+            { ...me, isMe: true },
+            ...friends.map(f => ({ ...f, isMe: false }))
+        ].sort((a, b) => b.avgScore - a.avgScore);
+
+        document.getElementById('rankingList').innerHTML = board.map((u, idx) => {
+            const rankIcon = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}위`;
+            const coffeeTag = (board.length > 1 && idx === board.length - 1) ? " ☕ 이번 주 커피 쏠 후보!" : "";
+            return `
+                <div class="rank-row ${u.isMe ? 'me' : ''}">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="rank-badge">${rankIcon}</span>
+                        <div>
+                            <strong>${u.nick}${u.isMe ? ' (나)' : ''}</strong>
+                            <div style="font-size:11px; color:var(--muted);">MBTI: ${u.mbti} · ${u.count}건 · ${Number(u.total || 0).toLocaleString('ko-KR')}원${coffeeTag}</div>
+                        </div>
+                    </div>
+                    <div style="font-weight:900; color:var(--primary); font-size:15px;">${u.avgScore}점</div>
+                </div>
             `;
-            resultArea.style.display = 'block';
-        }
-
-        function getHistory() {
-            const history = localStorage.getItem(STORAGE_KEY);
-            return history ? JSON.parse(history) : [];
-        }
-
-        function saveDataToLocalStorage(newData) {
-            const history = getHistory();
-            newData.id = Date.now();
-            history.push(newData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-        }
-
-        function updateStatsUI() {
-            const history = getHistory();
-            const count = history.length;
-            document.getElementById('statsCount').textContent = `${count}건`;
-
-            if (count === 0) {
-                document.getElementById('statsTotalAmount').textContent = '0원';
-                document.getElementById('statsAvgScore').textContent = '0점';
-                document.getElementById('statsComment').textContent = '아직 분석한 내역이 없네요. 첫 영수증을 올려보세요!';
-                document.getElementById('categoryBreakdown').innerHTML = '';
-                return;
-            }
-
-            let totalAmount = 0;
-            let totalScore = 0;
-            const categoryTotals = {};
-            CATEGORIES.forEach(cat => categoryTotals[cat] = 0);
-
-            history.forEach(item => {
-                totalAmount += Number(item.amount || 0);
-                totalScore += Number(item.score || 0);
-                if (Object.prototype.hasOwnProperty.call(categoryTotals, item.category)) {
-                    categoryTotals[item.category] += Number(item.amount || 0);
-                } else {
-                    categoryTotals['기타'] += Number(item.amount || 0);
-                }
-            });
-
-            const avgScore = (totalScore / count).toFixed(0);
-            document.getElementById('statsTotalAmount').textContent = totalAmount.toLocaleString('ko-KR') + '원';
-            document.getElementById('statsAvgScore').textContent = `${avgScore}점`;
-
-            let barHTML = '<div class="category-bar-container">';
-            let breakdownHTML = '';
-
-            CATEGORIES.forEach((cat, index) => {
-                const amount = categoryTotals[cat];
-                if (amount > 0) {
-                    const percentage = totalAmount > 0 ? (amount / totalAmount * 100).toFixed(1) : 0;
-                    const barColor = CAT_COLORS[index % CAT_COLORS.length];
-                    barHTML += `<div class="category-bar ${barColor}" style="width: ${percentage}%" title="${cat}: ${percentage}%"></div>`;
-                    breakdownHTML += `<p><strong>${cat}:</strong> ${amount.toLocaleString('ko-KR')}원 (${percentage}%)</p>`;
-                }
-            });
-            barHTML += '</div>';
-
-            document.getElementById('categoryBreakdown').innerHTML = barHTML + breakdownHTML;
-
-            let comment = "";
-            const lastScore = history[count - 1]?.score;
-
-            if (count > 1) {
-                if (avgScore >= 80) comment = "💎 이 구역의 알뜰왕! 지금처럼만 유지하세요.";
-                else if (avgScore >= 60) comment = "👍 전반적으로 무난한 소비 생활 중입니다.";
-                else comment = "💸 지갑에 구멍이 났어요! 긴급 처방이 필요합니다.";
-
-                if (lastScore && lastScore > Number(avgScore) + 5) {
-                    comment += "<br>🎉 이번 소비는 평소보다 훨씬 합리적이었습니다!";
-                } else if (lastScore && lastScore < Number(avgScore) - 5) {
-                    comment += "<br>🚨 이번 소비는 평소보다 과소비 경향이 있네요.";
-                }
-            } else {
-                comment = "첫걸음이 중요합니다. 계속 기록해 볼까요?";
-            }
-
-            document.getElementById('statsComment').innerHTML = comment;
-        }
-    </script>
+        }).join('');
+    }
+</script>
 </body>
 </html>
