@@ -37,32 +37,35 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "배달": ["배민", "배달", "쿠팡이츠", "요기요"],
     "카페/간식": ["커피", "카페", "스타벅스", "메가", "컴포즈", "마카롱", "베이커리"],
     "식비": ["식당", "초밥", "우동", "밥", "정식", "국밥", "김밥"],
-    "교통": ["버스", "지하철", "택시", "주유", "코레일", "이체", "송금"],
-    "쇼핑/생활": ["마트", "편의점", "cu", "gs25", "세븐일레븐", "다이소", "올리브영", "은행", "뱅크", "토스", "페이"],
+    "교통": ["버스", "지하철", "택시", "카카오t", "주유", "코레일"],
+    "쇼핑/생활": ["마트", "편의점", "cu", "gs25", "세븐일레븐", "다이소", "올리브영", "이체", "송금"],
     "기타": [],
 }
 
 app = FastAPI()
 
 
-class ReceiptFeedback(BaseModel):
+class ReceiptItem(BaseModel):
     date: str = Field(description="결제일 또는 이체일 YYYY-MM-DD (없으면 오늘 날짜)")
-    source_type: Literal["영수증", "배달앱", "은행앱", "복합내역"] = Field(
-        description="캡처 출처 구분 (은행 이체/출금 화면이면 '은행앱', 함께 올렸으면 '복합내역')"
-    )
-    merchant: str = Field(description="상호명 또는 수취인/은행 거래처명")
-    items_summary: str = Field(
-        description="가계부에 기록할 핵심 품목 또는 이체·출금 내역 요약 (여러 장이면 누락 없이 함께 기재)"
-    )
-    amount: int = Field(description="할인 반영 후 최종 결제 금액 또는 출금 금액(원 단위 정수)")
+    source_type: Literal["영수증", "배달앱", "은행앱"] = Field(description="캡처 출처 (영수증, 배달앱, 은행앱 중 택1)")
+    merchant: str = Field(description="상호명 또는 거래처명")
+    items_summary: str = Field(description="가계부에 기록할 핵심 품목 또는 거래 내역 요약")
+    amount: int = Field(description="할인 반영 후 최종 결제/출금 금액(원 단위 정수)")
     category: Literal["식비", "배달", "카페/간식", "교통", "쇼핑/생활", "기타"]
-    score: int = Field(description="소비 합리성 점수 (0~100)")
+    score: int = Field(description="이 소비 건의 합리성 점수 (0~100)")
     stamp: str = Field(description="판정 도장 2~4글자 (알뜰, 합격, 주의, 과소비 중 택1)")
     badge: str = Field(description="이번 소비에 어울리는 재치 있는 한 줄 별명")
     headline: str = Field(description="가계부 한 줄 요약 및 소비 습관 코멘트")
     good_point: str = Field(description="이 소비에서 잘한 점 1가지")
     bad_point: str = Field(description="아쉬운 점 또는 절약 포인트 1가지")
     next_mission: str = Field(description="다음 소비 때 바로 실천할 현실적 절약 미션 1가지")
+
+
+class MultiReceiptResponse(BaseModel):
+    uploaded_at: str = Field(description="사용자가 이미지를 업로드한 오늘 날짜 YYYY-MM-DD")
+    items: list[ReceiptItem] = Field(
+        description="동일 주문 분할 캡처는 1건으로 합치고, 서로 다른 거래(예: 배달 + 택시)는 각각 분리한 개별 지출 목록"
+    )
 
 
 def clean_text(raw_text: str, *, mode: str = "keep") -> str:
@@ -125,18 +128,19 @@ def build_prompt(image_count: int = 1, target_date: str | None = None, style: st
     tone = str(kwargs.get("tone", "현실적")).strip()
 
     multi_note = (
-        f"첨부된 {image_count}장의 이미지를 모두 빠짐없이 읽으세요.\n"
-        "- 같은 주문이 길어서 나뉜 캡처라면 중복 합산하지 말고 하나로 통합하세요.\n"
-        "- 만약 '은행 앱(이체/출금/결제 내역)'과 '배달앱/영수증' 등 서로 다른 내역이 함께 올라왔다면 어느 한쪽을 임의로 배제하거나 무시하지 말고, 은행 앱의 거래처·이체/출금 금액과 배달앱/영수증 내역을 모두 items_summary와 headline/bad_point에 함께 반영하세요."
+        f"첨부된 {image_count}장의 이미지를 모두 확인하세요.\n"
+        "- 만약 같은 주문/영수증이 길어서 위아래로 나뉘어 캡처된 경우라면 중복 합산하지 말고 items 리스트에 '1건'으로 통합하세요.\n"
+        "- 반대로 서로 다른 결제/거래 내역(예: 배달앱 음식 주문 1장 + 카카오T 택시 이용내역 1장, 또는 은행 이체 1장 + 영수증 1장)이라면 절대 '기타'로 뭉치지 말고, 각각 별도의 항목으로 분리해서 items 리스트에 따로 담으세요! 각 항목마다 가장 정확한 카테고리(배달, 교통, 식비, 카페/간식, 쇼핑/생활, 기타)를 지정하세요."
         if image_count > 1
-        else "첨부된 1장의 이미지(영수증, 배달앱 결제 캡처, 또는 은행 앱 이체·결제·출금 화면)를 분석하세요. 은행 앱 화면도 유효한 지출/거래 내역으로 적극 인식하세요."
+        else "첨부된 1장의 이미지(영수증, 배달앱 결제 캡처, 또는 은행 앱 이체·결제 화면)를 분석해 items 리스트에 1건으로 담으세요."
     )
 
     template = (
         "당신은 영수증, 배달앱 캡처, 은행 앱 거래내역을 모두 읽고 가계부를 자동 정리하는 AI 자산관리사입니다.\n"
-        "현재 시각은 {today} {now_time} 입니다.\n"
+        "오늘(업로드 날짜)은 {today} 이고 현재 시각은 {now_time} 입니다.\n"
+        "uploaded_at 필드에는 반드시 '{today}'를 넣으세요.\n"
         "{multi_note}\n"
-        "- 은행 앱 화면에서는 출금/이체/결제 금액, 상대방/거래처명, 날짜를 정확히 추출하세요.\n"
+        "- 배달앱 주문은 반드시 카테고리를 '배달'로, 택시/버스/지하철은 '교통'으로 분류하세요.\n"
         "- 배달앱 캡처는 쿠폰/할인 적용 후 '최종 결제 금액'을 기준으로 계산하세요.\n"
         "- stamp는 반드시 '알뜰', '합격', '주의', '과소비' 중 하나로 답하세요.\n"
         "- 문체는 '{style}'하고 '{tone}'인 톤으로 작성하세요."
@@ -190,7 +194,8 @@ async def analyze(files: list[UploadFile] = File(...)):
     if len(images) == 0:
         raise HTTPException(status_code=400, detail="유효한 이미지 파일이 없습니다.")
 
-    prompt_text = build_prompt(image_count=len(images), style="실용적이고 재치 있게", tone="현실적")
+    today_iso = date.today().isoformat()
+    prompt_text = build_prompt(image_count=len(images), target_date=today_iso, style="실용적이고 재치 있게", tone="현실적")
     last_error = ""
 
     model_iter: Iterator[str] = iter(CANDIDATE_MODELS)
@@ -213,14 +218,16 @@ async def analyze(files: list[UploadFile] = File(...)):
                 contents=[*images, prompt_text],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=ReceiptFeedback,
+                    response_schema=MultiReceiptResponse,
                     temperature=0.3,
                 ),
             )
-            parsed = ReceiptFeedback.model_validate_json(response.text)
-            parsed.merchant = clean_text(parsed.merchant, mode="keep") or "미확인 상호"
-            if not parsed.category:
-                pass
+            parsed = MultiReceiptResponse.model_validate_json(response.text)
+            parsed.uploaded_at = today_iso
+            for entry in parsed.items:
+                entry.merchant = clean_text(entry.merchant, mode="keep") or "미확인 상호"
+                if not entry.category:
+                    pass
             return parsed
         except Exception as e:
             last_error = f"{model_name}: {str(e)}"

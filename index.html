@@ -200,6 +200,15 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         #resultArea { display: none; }
+        .single-result-block {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+        .single-result-block:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
         .res-top {
             display: flex;
             justify-content: space-between;
@@ -215,6 +224,7 @@
             border-radius: 10px;
             border: 3px solid;
             transform: rotate(-4deg);
+            white-space: nowrap;
         }
         .stamp.알뜰 { color: #2563eb; border-color: #2563eb; }
         .stamp.합격 { color: #10b981; border-color: #10b981; }
@@ -254,9 +264,10 @@
             padding: 11px 0;
             border-bottom: 1px solid var(--border);
             font-size: 13px;
+            gap: 10px;
         }
         .ledger-item:last-child { border-bottom: none; }
-        .ledger-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+        .ledger-meta { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.4; }
 
         .mbti-hero {
             background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
@@ -338,7 +349,7 @@
                 <label for="fileInput" class="upload-label">
                     <span class="upload-icon">🧾</span>
                     <span class="upload-text">영수증 · 배달앱 · 은행 앱 캡처 올리기</span>
-                    <span class="upload-hint">은행 앱 이체/결제 캡처 단독도 인식되며,<br>배달앱 캡처와 함께 올려도 어느 한쪽을 버리지 않고 함께 반영합니다.</span>
+                    <span class="upload-hint">같은 주문의 분할 캡처는 1건으로 합치고,<br>배달·택시 등 서로 다른 내역을 같이 올리면 각 카테고리로 자동 분리됩니다.</span>
                 </label>
                 <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFileSelect(event)">
                 <input type="file" id="appendFileInput" accept="image/*" multiple onchange="handleAppendFiles(event)">
@@ -468,6 +479,14 @@
         refreshAllUI();
     };
 
+    function getTodayISO() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
     function switchTab(tabName, btnEl) {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -531,7 +550,7 @@
         document.getElementById('previewContainer').style.display = 'none';
         document.getElementById('loadingMsg').textContent =
             count > 1
-                ? `캡처 ${count}장을 모두 확인해 가계부에 정리 중입니다...`
+                ? `캡처 ${count}장을 분석해 카테고리별로 자동 분류 중입니다...`
                 : `AI 자산관리사가 내역을 읽고 가계부를 정리 중입니다...`;
         document.getElementById('loadingArea').style.display = 'block';
         document.getElementById('resultArea').style.display = 'none';
@@ -545,11 +564,22 @@
                 const err = await response.json();
                 throw new Error(err.detail || "분석 실패");
             }
-            const data = await response.json();
-            data.id = Date.now();
+            const resData = await response.json();
+            const uploadedDate = resData.uploaded_at || getTodayISO();
+            const parsedItems = Array.isArray(resData.items) && resData.items.length > 0
+                ? resData.items
+                : [resData];
 
             const history = getHistory();
-            history.push(data);
+            const savedEntries = parsedItems.map((entry, idx) => {
+                const record = {
+                    ...entry,
+                    id: Date.now() + idx,
+                    uploaded_at: uploadedDate
+                };
+                history.push(record);
+                return record;
+            });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 
             selectedFiles = [];
@@ -557,9 +587,9 @@
             document.getElementById('appendFileInput').value = '';
             document.getElementById('previewGrid').innerHTML = '';
 
-            renderScanResult(data, count);
+            renderScanResults(savedEntries, uploadedDate);
             refreshAllUI();
-            checkConsciencePiggyTrigger(data, history);
+            checkConsciencePiggyTrigger(savedEntries[savedEntries.length - 1], history);
         } catch (e) {
             alert("분석 중 오류: " + e.message);
             resetScanUI();
@@ -568,34 +598,46 @@
         }
     }
 
-    function renderScanResult(data, mergedCount) {
-        const amountStr = Number(data.amount || 0).toLocaleString('ko-KR');
-        const stampClean = String(data.stamp || '합격').replace(/\s/g, '');
-        const sourceLabel = data.source_type ? `🧾 ${data.source_type}` : '';
-        const mergedTag = mergedCount > 1 ? `<span class="pill">🧩 캡처 ${mergedCount}장 반영</span>` : '';
+    function renderScanResults(entries, uploadedDate) {
         const area = document.getElementById('resultArea');
-        area.innerHTML = `
-            <div class="res-top">
-                <span class="stamp ${stampClean}">${data.stamp}</span>
-                <div style="text-align:right;">
-                    <div class="res-merchant">${data.merchant}</div>
-                    <div class="res-items">${data.date} · ${data.items_summary || data.category}</div>
-                    <div class="res-amount">${amountStr}원</div>
+        const splitBanner = entries.length > 1
+            ? `<div class="pill-row"><span class="pill">✨ 서로 다른 ${entries.length}건으로 자동 분리 기록됨 · 올린 날짜 ${uploadedDate}</span></div>`
+            : '';
+
+        const cardsHtml = entries.map(data => {
+            const amountStr = Number(data.amount || 0).toLocaleString('ko-KR');
+            const stampClean = String(data.stamp || '합격').replace(/\s/g, '');
+            const sourceLabel = data.source_type ? `🧾 ${data.source_type}` : '';
+            return `
+                <div class="single-result-block">
+                    <div class="res-top">
+                        <span class="stamp ${stampClean}">${data.stamp}</span>
+                        <div style="text-align:right;">
+                            <div class="res-merchant">${data.merchant}</div>
+                            <div class="res-items">결제일 ${data.date} · 올린 날 ${data.uploaded_at || uploadedDate}</div>
+                            <div class="res-items">${data.items_summary || data.category}</div>
+                            <div class="res-amount">${amountStr}원</div>
+                        </div>
+                    </div>
+                    <div class="pill-row">
+                        ${sourceLabel ? `<span class="pill">${sourceLabel}</span>` : ''}
+                        <span class="pill">📂 ${data.category}</span>
+                        <span class="pill">🎯 합리성 ${data.score}점</span>
+                        <span class="pill">🏷️ ${data.badge}</span>
+                    </div>
+                    <div class="feedback-box">
+                        <p><strong>💡 가계부 코멘트:</strong> ${data.headline}</p>
+                        <p><strong>👍 잘한 점:</strong> ${data.good_point}</p>
+                        <p><strong>🤔 절약 포인트:</strong> ${data.bad_point}</p>
+                        <p><strong>🚀 다음 미션:</strong> ${data.next_mission}</p>
+                    </div>
                 </div>
-            </div>
-            <div class="pill-row">
-                ${sourceLabel ? `<span class="pill">${sourceLabel}</span>` : ''}
-                ${mergedTag}
-                <span class="pill">📂 ${data.category}</span>
-                <span class="pill">🎯 합리성 ${data.score}점</span>
-                <span class="pill">🏷️ ${data.badge}</span>
-            </div>
-            <div class="feedback-box">
-                <p><strong>💡 가계부 코멘트:</strong> ${data.headline}</p>
-                <p><strong>👍 잘한 점:</strong> ${data.good_point}</p>
-                <p><strong>🤔 절약 포인트:</strong> ${data.bad_point}</p>
-                <p><strong>🚀 다음 미션:</strong> ${data.next_mission}</p>
-            </div>
+            `;
+        }).join('');
+
+        area.innerHTML = `
+            ${splitBanner}
+            ${cardsHtml}
             <button class="btn btn-primary" style="margin-top:14px;" onclick="resetScanUI()">다음 내역 계속 등록하기 ➕</button>
         `;
         area.style.display = 'block';
@@ -624,9 +666,10 @@
             alert("내보낼 가계부 내역이 없습니다.");
             return;
         }
-        const header = ["날짜", "출처", "상호명/거래처", "품목/거래요약", "카테고리", "결제금액", "합리성점수", "판정"];
+        const header = ["결제일", "올린날짜", "출처", "상호명/거래처", "품목/거래요약", "카테고리", "결제금액", "합리성점수", "판정"];
         const rows = history.map(r => [
             r.date,
+            r.uploaded_at || r.date,
             r.source_type || "영수증",
             `"${String(r.merchant).replace(/"/g, '""')}"`,
             `"${String(r.items_summary || '').replace(/"/g, '""')}"`,
@@ -640,7 +683,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `AI_스마트가계부_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `AI_스마트가계부_${getTodayISO()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     }
@@ -724,6 +767,7 @@
     }
 
     function checkConsciencePiggyTrigger(latest, history) {
+        if (!latest) return;
         const streak = getBadStreak(history);
         const lowScore = Number(latest.score || 100) < 50;
         if (lowScore || streak >= 3) {
@@ -869,9 +913,10 @@
                     <div>
                         <strong>${item.merchant}</strong>
                         <span style="font-size:11px; color:var(--primary);">[${item.source_type || '영수증'} · ${item.category}]</span>
-                        <div class="ledger-meta">${item.date} · ${item.items_summary || '-'} · ${item.score}점(${item.stamp})</div>
+                        <div class="ledger-meta">결제일 ${item.date} · 올린 날 ${item.uploaded_at || item.date}</div>
+                        <div class="ledger-meta">${item.items_summary || '-'} · ${item.score}점(${item.stamp})</div>
                     </div>
-                    <div style="text-align:right;">
+                    <div style="text-align:right; white-space:nowrap;">
                         <div style="font-weight:800;">${Number(item.amount).toLocaleString('ko-KR')}원</div>
                         <button style="border:none; background:none; color:#94a3b8; font-size:11px; cursor:pointer;" onclick="deleteLedgerItem(${item.id})">삭제</button>
                     </div>
