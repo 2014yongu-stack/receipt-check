@@ -37,8 +37,8 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "배달": ["배민", "배달", "쿠팡이츠", "요기요"],
     "카페/간식": ["커피", "카페", "스타벅스", "메가", "컴포즈", "마카롱", "베이커리"],
     "식비": ["식당", "초밥", "우동", "밥", "정식", "국밥", "김밥"],
-    "교통": ["버스", "지하철", "택시", "주유", "코레일"],
-    "쇼핑/생활": ["마트", "편의점", "cu", "gs25", "세븐일레븐", "다이소", "올리브영"],
+    "교통": ["버스", "지하철", "택시", "주유", "코레일", "이체", "송금"],
+    "쇼핑/생활": ["마트", "편의점", "cu", "gs25", "세븐일레븐", "다이소", "올리브영", "은행", "뱅크", "토스", "페이"],
     "기타": [],
 }
 
@@ -46,10 +46,15 @@ app = FastAPI()
 
 
 class ReceiptFeedback(BaseModel):
-    date: str = Field(description="결제일 YYYY-MM-DD (없으면 오늘 날짜)")
-    merchant: str = Field(description="상호명")
-    items_summary: str = Field(description="가계부에 기록할 핵심 구매 품목 요약 (예: 아메리카노 외 3건)")
-    amount: int = Field(description="할인 반영 후 최종 결제 금액(원 단위 정수)")
+    date: str = Field(description="결제일 또는 이체일 YYYY-MM-DD (없으면 오늘 날짜)")
+    source_type: Literal["영수증", "배달앱", "은행앱", "복합내역"] = Field(
+        description="캡처 출처 구분 (은행 이체/출금 화면이면 '은행앱', 함께 올렸으면 '복합내역')"
+    )
+    merchant: str = Field(description="상호명 또는 수취인/은행 거래처명")
+    items_summary: str = Field(
+        description="가계부에 기록할 핵심 품목 또는 이체·출금 내역 요약 (여러 장이면 누락 없이 함께 기재)"
+    )
+    amount: int = Field(description="할인 반영 후 최종 결제 금액 또는 출금 금액(원 단위 정수)")
     category: Literal["식비", "배달", "카페/간식", "교통", "쇼핑/생활", "기타"]
     score: int = Field(description="소비 합리성 점수 (0~100)")
     stamp: str = Field(description="판정 도장 2~4글자 (알뜰, 합격, 주의, 과소비 중 택1)")
@@ -120,17 +125,19 @@ def build_prompt(image_count: int = 1, target_date: str | None = None, style: st
     tone = str(kwargs.get("tone", "현실적")).strip()
 
     multi_note = (
-        f"첨부된 {image_count}장의 이미지는 길어서 나뉘어 캡처된 '하나의 동일한 주문/영수증'입니다. 겹치는 부분은 중복 합산하지 말고 하나의 결제 내역으로 통합해서 분석하세요."
+        f"첨부된 {image_count}장의 이미지를 모두 빠짐없이 읽으세요.\n"
+        "- 같은 주문이 길어서 나뉜 캡처라면 중복 합산하지 말고 하나로 통합하세요.\n"
+        "- 만약 '은행 앱(이체/출금/결제 내역)'과 '배달앱/영수증' 등 서로 다른 내역이 함께 올라왔다면 어느 한쪽을 임의로 배제하거나 무시하지 말고, 은행 앱의 거래처·이체/출금 금액과 배달앱/영수증 내역을 모두 items_summary와 headline/bad_point에 함께 반영하세요."
         if image_count > 1
-        else "첨부된 1장의 영수증 또는 배달앱 결제 캡처 이미지를 분석하세요."
+        else "첨부된 1장의 이미지(영수증, 배달앱 결제 캡처, 또는 은행 앱 이체·결제·출금 화면)를 분석하세요. 은행 앱 화면도 유효한 지출/거래 내역으로 적극 인식하세요."
     )
 
     template = (
-        "당신은 영수증으로 사용자의 가계부를 자동 정리하고 소비 습관을 코칭하는 AI 자산관리사입니다.\n"
+        "당신은 영수증, 배달앱 캡처, 은행 앱 거래내역을 모두 읽고 가계부를 자동 정리하는 AI 자산관리사입니다.\n"
         "현재 시각은 {today} {now_time} 입니다.\n"
         "{multi_note}\n"
+        "- 은행 앱 화면에서는 출금/이체/결제 금액, 상대방/거래처명, 날짜를 정확히 추출하세요.\n"
         "- 배달앱 캡처는 쿠폰/할인 적용 후 '최종 결제 금액'을 기준으로 계산하세요.\n"
-        "- items_summary에는 전체 주문 내역을 종합한 깔끔한 품목 요약을 넣으세요.\n"
         "- stamp는 반드시 '알뜰', '합격', '주의', '과소비' 중 하나로 답하세요.\n"
         "- 문체는 '{style}'하고 '{tone}'인 톤으로 작성하세요."
     )
@@ -152,7 +159,7 @@ def countdown_generator(n: int) -> Iterator[int]:
 
 
 def prepare_image(raw_bytes: bytes) -> Image.Image:
-    """긴 배달앱 캡처도 글씨가 선명하게 읽히도록 최적화"""
+    """고해상도 이미지 최적화"""
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode in ("RGBA", "P", "LA"):
         img = img.convert("RGB")
